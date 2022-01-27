@@ -3,7 +3,9 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const md5 = require('md5');
+const bcrypt = require('bcryptjs');
+// const saltRounds = 10;
+const salt = bcrypt.genSaltSync(10);
 
 const app = express();
 
@@ -39,43 +41,44 @@ app.get("/register", function(req, res) {
     res.render("register");
 });
 
-app.post("/register", function(req, res) {
+app.post("/register", function (req, res) {
+
+    const hash = bcrypt.hashSync(req.body.password, salt);
+
     const newUser = new User({
         email: req.body.username,
-        password: md5(req.body.password)
+        password: hash
     });
 
-    newUser.save(function(err) {
-        if (!err) {
-            console.log("Successful");
-            res.render("secrets");
-        } else {
+    newUser.save(function (err) {
+        if (err) {
             console.log(err);
-        }
-    });
-
-});
-
-app.post("/login", function(req, res) {
-
-    const email = req.body.username;
-    const password = md5(req.body.password);
-
-    User.findOne({ email: email }, function(err, foundUser) {
-        if (foundUser) {
-            if (password === foundUser.password) {
-                console.log("Password Matched");
-                res.render("secrets");
-            } else {
-                console.log("Invalid Password");
-            }
-
         } else {
-            console.log("User not found");
+            res.render("secrets");
         }
     });
+
 });
 
+app.post("/login", function (req, res) {
+
+  const username = req.body.username;
+  const password = req.body.password;
+
+  User.findOne({email: username }, function (err, foundUser) {
+      if (err) {
+          console.log(err);
+      } else {
+          if (foundUser) {
+              if (bcrypt.compareSync(password, foundUser.password)) {
+                  console.log(foundUser.password);
+                  console.log(password);
+                  res.render("secrets");
+              }
+          }
+      }
+  });
+});
 
 
 app.listen(3000, function() {
